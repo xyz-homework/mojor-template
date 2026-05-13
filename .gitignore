@@ -1,0 +1,9 @@
+inst/libs/
+inst/mojo/*/.pixi/
+inst/mojo/*/pixi.lock
+src/*.o
+src/*.so
+src/*.dylib
+src/Makevars
+*.Rproj.user
+.DS_Store

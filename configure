@@ -1,0 +1,66 @@
+#!/bin/sh
+# configure — build the Mojo shared library before R compiles the C glue.
+#
+# Behavior matches hellomojo's contract:
+#   MOJORTEMPLATE_BUILD unset  -> skip Mojo build, compile C glue with
+#                                 -DMOJORTEMPLATE_NO_BUILD (fallback mode)
+#   MOJORTEMPLATE_BUILD=1      -> install pixi if needed, build dylib/so
+#
+# Why a flag: keeps CI / staging without a Mojo toolchain installable.
+
+set -e
+thisDir=$(cd "$(dirname "$0")" && pwd)
+
+if [ -z "${MOJORTEMPLATE_BUILD}" ]; then
+    echo "MOJORTEMPLATE_BUILD not set — building C glue without Mojo backend (set MOJORTEMPLATE_BUILD=1 to enable)" >&2
+    sed -e 's|@MOJO_CFLAGS@|-DMOJORTEMPLATE_NO_BUILD|' \
+        -e 's|@MOJO_LIBS@||' \
+        "${thisDir}/src/Makevars.in" > "${thisDir}/src/Makevars"
+    exit 0
+fi
+
+echo "MOJORTEMPLATE_BUILD=1 — building Mojo shared library" >&2
+
+pixi="${HOME}/.pixi/bin/pixi"
+if ! command -v "$pixi" >/dev/null 2>&1 && ! command -v pixi >/dev/null 2>&1; then
+    echo "pixi not found, installing..." >&2
+    curl -fsSL https://pixi.sh/install.sh | sh
+fi
+if [ ! -x "$pixi" ] && command -v pixi >/dev/null 2>&1; then
+    pixi=$(command -v pixi)
+fi
+
+mkdir -p "${thisDir}/inst/libs"
+
+cd "${thisDir}/inst/mojo/mojortemplate"
+"$pixi" install
+"$pixi" run mojo --version
+
+case "$(uname -s)" in
+    Darwin)
+        libsuffix="dylib"
+        # macOS ld errors on unresolved R symbols (Rprintf etc) at link time;
+        # defer to dyld at load time.
+        linker_args="-Xlinker -undefined -Xlinker dynamic_lookup"
+        ;;
+    Linux)
+        libsuffix="so"
+        linker_args=""
+        ;;
+    *)
+        libsuffix="dll"
+        linker_args=""
+        ;;
+esac
+
+"$pixi" run mojo build mojortemplate.mojo \
+    --emit shared-lib \
+    $linker_args \
+    -o "${thisDir}/inst/libs/libmojortemplate.${libsuffix}"
+
+ls -l "${thisDir}/inst/libs/libmojortemplate.${libsuffix}"
+
+# Generate Makevars: link against the freshly built library.
+sed -e 's|@MOJO_CFLAGS@||' \
+    -e "s|@MOJO_LIBS@|-L\$(R_PACKAGE_DIR)/libs -L\$(CURDIR)/../inst/libs -lmojortemplate -Wl,-rpath,'\$\$ORIGIN/../libs'|" \
+    "${thisDir}/src/Makevars.in" > "${thisDir}/src/Makevars"

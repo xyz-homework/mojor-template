@@ -1,0 +1,6 @@
+^\.github$
+^\.git$
+^README\.Rmd$
+^inst/libs$
+^inst/mojo/.+/\.pixi$
+^inst/mojo/.+/pixi\.lock$

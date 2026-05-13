@@ -1,0 +1,20 @@
+Package: mojortemplate
+Type: Package
+Title: Minimal Mojo <-> R FFI Template
+Version: 0.1.0
+Authors@R: c(person("Patrick", "Bair", email = "patrick@xyzhomework.com", role = c("aut", "cre")))
+Description: A copy-this-to-start template for calling Mojo shared libraries
+    from R via the C ABI. Demonstrates scalar exports, zero-copy buffers,
+    SIMD reductions, host callbacks, and an ALTREP-backed numeric vector
+    whose sum() dispatches directly to Mojo SIMD code.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+SystemRequirements: pixi (https://pixi.sh) and a Modular Mojo toolchain when
+    built with MOJORTEMPLATE_BUILD=1. Without the env flag the package
+    installs with a no-op fallback.
+URL: https://github.com/xyz-homework/mojor-template
+BugReports: https://github.com/xyz-homework/mojor-template/issues
+Suggests: testthat (>= 3.0.0), bench
+Config/testthat/edition: 3
